@@ -40,4 +40,6 @@ Source('sector_blk.cc')
 Source('sector_tags.cc')
 Source('super_blk.cc')
 
+DebugFlag('CacheBlockAccess')
+
 GTest('dueling.test', 'dueling.test.cc', 'dueling.cc')
