@@ -1,3 +1,4 @@
+// gcc -o spectre_shell_laptop spectre_shell_laptop.cpp defines.h -g -I.
 #include <cstdio>
 #include <iostream>
 #include <cstring>
@@ -8,8 +9,6 @@
 
 using namespace std;
 #include "defines.h"
-#include "gem5/m5ops.h"
-// #include "m5_mmap.h"
 
 // Sandbox
 #define WORKING_MEMORY_SIZE 1048576 // 256KB
@@ -180,10 +179,7 @@ int main(int argc, char* argv[])
   // If done right, should run successfully (return 0) on both laptop host AND X86O3CPU w/ l2cache in gem5!
 
   cout << "Grabbing Input" << endl;
-  if (argc < 2) {
-    cout << "Requires input csv as argument" << endl;
-  }
-  bool success = get_input(argv[1]);
+  bool success = get_input("/localhome/fubof/code/gem5-fuzzer/revizor_tests/input.csv");
   cout << "get_input returned: " << success << endl;
 
   cout << "Allocating sandbox" << endl;
@@ -201,10 +197,10 @@ int main(int argc, char* argv[])
   
   cout << endl;
   cout << "Starting asm block" << endl;
-  m5_reset_stats(0,0); //M5
   uint64_t output = 0; // Set breakpoint here!
-  asm volatile(""
+  asm volatile(
     ".intel_syntax noprefix\n"
+    // "mov %[output], 0xdeadbeef\n"
     
     // r14 <- input base address (stored in rdi, the first argument of measurement_code)
     "mov r14, %[main_region_addr]\n"
@@ -269,7 +265,6 @@ int main(int argc, char* argv[])
         "MOV rax, qword ptr [r14 + 64]\n" // Correct path (should be able to do nothing as well)
     ".l2:\n"
     "MFENCE\n"
-    // TODO Insert magic gem5 end track inst here
     
     // Can print out rax if we want some return value
     "mov %[output], rax\n"
@@ -283,13 +278,11 @@ int main(int argc, char* argv[])
   : [main_region_addr] "r" (sandbox_input) // Input e.g. "r" (src)
   :  "rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r14", "cc", "memory" // Clobber list
   );
-  m5_dump_stats(0,0); //M5
   // Effective memory dmb in beginning
 
   // Violation either occured or didn't by this point, exit gracefully
   cout << "Finished running spectre code" << endl;
   cout << "Output of spectre code chunk: " << output << endl; // Give some output from spectre, even if garbage
 
-  m5_exit(0); //M5
   return 0;
 }

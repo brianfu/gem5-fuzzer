@@ -37,43 +37,4 @@ echo "Done running gem5"
 
 
 ###
-
-# --debug-flags=CacheAccess,CacheBlockAccess \
-# --output=bin_output.out |& tee m5out/gem5_output.out
-
-## Prep
-# cd $REPO/util/m5
-# scons build/x86/out/m5 -j 97 # Small 'x'!
-
-
-#build/X86/gem5.opt configs/example/se.py --cmd=tests/test-progs/hello/bin/x86/linux/hello
-# git commit --no-verify
-
-
-# build/X86/gem5.opt configs/learning_gem5/part1/simple.py
-# build/X86/gem5.opt configs/example/se.py --cmd=tests/test-progs/hello/bin/x86/linux/hello
-# build/X86/gem5.opt configs/example/se.py --help
-
-#CFLAGS=-I. -static -I$(GEM5_PATH)/include
-
-# %.o: %.c $(DEPS)
-# 	$(CC) -c -o $@ $< $(CFLAGS) $(WFLAGS) $(DFLAGS) $(LIBS) 
-
-# $(BINS): $(OBJ)
-# 	$(CC) -o $@ $^ $(CFLAGS) $(WFLAGS) $(DFLAGS) $(LIBS)
-
-# cd $TESTS_DIR;
-# rm spectre_v1
-# as spectre_v1.asm -o spectre_v1
-# chmod 775 spectre_v1
-# export BIN=spectre_v1
-# cd $REPO;
-
-# gdb -tui spectre_shell
-# b 171
-# p output
-# i r rax
-# x/1fu sandbox_input
-# disp sandbox_input
-# layout src/asm/reg 
-# ni, si, n, s
+# Notes in ~/code/notes/221219_spectre_shell_debug.txt

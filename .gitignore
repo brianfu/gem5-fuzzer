@@ -31,3 +31,6 @@ m5out
 configs/example/memcheck.cfg
 configs/dram/lowp_sweep.cfg
 .pyenv
+
+#gem5-fuzzer
+large_gem5_output.out
