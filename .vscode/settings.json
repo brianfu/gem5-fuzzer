@@ -1,0 +1,16 @@
+{
+  "files.associations": {
+    "*.txt": "plaintext",
+    "*.sh": "shellscript",
+    "*.asm": "asm-intel-x86-generic",
+    "*.bpred": "cpp",
+    "*.llc_pref": "cpp",
+    "*.l2c_pref": "cpp",
+    "*.l1d_pref": "cpp",
+    "*.sm": "cpp",
+    "fstream": "cpp",
+    "*.tcc": "cpp",
+    "stdio.h": "c",
+    "ostream": "cpp"
+  }
+}

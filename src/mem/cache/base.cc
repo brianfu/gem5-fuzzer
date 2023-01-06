@@ -48,6 +48,10 @@
 #include "base/compiler.hh"
 #include "base/logging.hh"
 #include "debug/Cache.hh"
+
+//Add new debug flag here (so we dont need to use cache flag for dprintf)
+#include "debug/CacheAccess.hh"
+
 #include "debug/CacheComp.hh"
 #include "debug/CachePort.hh"
 #include "debug/CacheRepl.hh"
@@ -1241,6 +1245,8 @@ BaseCache::access(PacketPtr pkt, CacheBlk *&blk, Cycles &lat,
 
     DPRINTF(Cache, "%s for %s %s\n", __func__, pkt->print(),
             blk ? "hit " + blk->print() : "miss");
+    DPRINTF(CacheAccess, "%s for %s %s\n", __func__, pkt->print(),
+    blk ? "hit " + blk->print() : "miss");
 
     if (pkt->req->isCacheMaintenance()) {
         // A cache maintenance operation is always forwarded to the

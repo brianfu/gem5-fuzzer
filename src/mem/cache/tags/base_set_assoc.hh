@@ -51,6 +51,8 @@
 #include <string>
 #include <vector>
 
+#include "debug/CacheBlockAccess.hh"
+
 #include "base/logging.hh"
 #include "base/types.hh"
 #include "mem/cache/base.hh"
@@ -151,6 +153,12 @@ class BaseSetAssoc : public BaseTags
 
         // The tag lookup latency is the same for a hit or a miss
         lat = lookupLatency;
+
+        //print the address in pkt->getAddr() (physical address of the packet that we are accessing (even for stores))
+        //print out whether hit or miss (*blk is NULL or not null)
+        DPRINTF(CacheBlockAccess, "Accessing address %ld", pkt->getAddr());
+        DPRINTF(CacheBlockAccess, "Block %s with latency %ld", blk ? "hit " + blk->print() : "miss", lat);
+
 
         return blk;
     }
