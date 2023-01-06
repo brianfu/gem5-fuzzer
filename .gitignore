@@ -34,3 +34,4 @@ configs/dram/lowp_sweep.cfg
 
 #gem5-fuzzer
 large_gem5_output.out
+.vscode
