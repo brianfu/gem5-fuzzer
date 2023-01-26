@@ -5,6 +5,10 @@
 // inputs.h should be included in spectre_shell itself!
 // #include "m5_mmap.h"
 
+#ifndef START_WORK_M5OP
+#define START_WORK_M5OP 0x005a
+#endif
+
 // Sandbox
 #define WORKING_MEMORY_SIZE 1048576 // 256KB
 #define MAIN_REGION_SIZE 4096

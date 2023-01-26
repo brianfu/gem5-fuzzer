@@ -1,7 +1,12 @@
+ifdef DFLAGS
+DFLAGS=-DSTART_WORK_M5OP # Call with "make DFLAGS=-DSTART_WORK_M5OP=0x0021"
+else
+DFLAGS=-DSTART_WORK_M5OP=0x005a
+endif
+
 CC=g++
-CFLAGS=-I. -I$(GEM5_PATH)/include
+CFLAGS=-I. -I$(GEM5_PATH)/include -g -O0
 WFLAGS=-Wall
-DFLAGS=-g -O0
 LDFLAGS=-L$(GEM5_PATH)/util/m5/build/x86/out -lm5
 
 OBJECTS = spectre_shell

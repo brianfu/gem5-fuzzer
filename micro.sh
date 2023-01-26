@@ -6,6 +6,7 @@ export GEM5_PATH=$REPO;
 export TESTS_DIR=$REPO/revizor_tests;
 export OUT_DIR=$REPO/m5out;
 export GEM5_DEBUG_FLAGS=""; # Default as blank
+export BINARY_ARGS="input.csv" # Path to csv containing 1536 uint64_t's in hex form
 
 cd $REPO;
 
@@ -13,40 +14,104 @@ cd $REPO;
 # echo "Making gem5";
 # scons build/X86/gem5.opt -j 97 USE_X86_ISA=True
 
-echo "Making Spectre Shell";
-cd $TESTS_DIR;
-make clean;
-make;
-cd $REPO;
-
-echo "Cleaning outdir"
-cd $OUT_DIR;
-echo "" > gem5_output.out;
-echo "" > bin_output.out;
-cd $REPO;
-
 # Avaliable debug flags: O3CPUAll, O3PipeView, CacheAccess, CacheBlockAccess, PrefetchMissProbeNotify
 # No space between debug flags
 
-echo "Running gem5"
+main() {
+  ARG=$1
 
-# export GEM5_DEBUG_FLAGS="";
-# export GEM5_DEBUG_FLAGS="--debug-flags=Exec";
-# export GEM5_DEBUG_FLAGS="--debug-flags=O3PipeView";
-export GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockAccess"; # Output may be massive!
+  echo "Making Spectre Shell";
+  cd $TESTS_DIR;
+  make clean;
+  make;
+  cd $REPO;
 
-export BINARY_ARGS="input.csv" # Path to csv containing 1536 uint64_t's in hex form
+  echo "Cleaning outdir"
+  cd $OUT_DIR;
+  echo "" > gem5_output.out;
+  echo "" > bin_output.out;
+  cd $REPO;
 
-build/X86/gem5.opt --outdir=$OUT_DIR $GEM5_DEBUG_FLAGS --debug-file=trace.out \
---debug-start=0 \
-configs/example/se.py --cmd=$TESTS_DIR/spectre_shell \
---options=$TESTS_DIR/$BINARY_ARGS \
---cpu-type=X86O3CPU --l1d_size=64kB --l1i_size=16kB --caches --l2cache \
---cacheline_size 64 --l2-hwp-type StridePrefetcher \
---bp-type LocalBP \
---output=bin_output.out &> m5out/gem5_output.out
-echo "Done running gem5"
+  echo "Running gem5"
 
+  case $ARG in
+    "debug")
+      echo "Running debug run; Change input.h for comparison!"
+      work_begin_tick=$2;
+      name_prefix=$3; # E.g. "1" for "1-misses.out"
+
+      let "pipe_debug_tick = $work_begin_tick - 10000000"; # Go back 10000 cycles beforehand for debug(assuming 1 GHz)
+      echo "Given m5_work_begin tick is: $work_begin_tick"
+      echo "Pipeline debug tick set at: $pipe_debug_tick"
+
+      echo "Running CacheBlockAccess debug:";
+      GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockAccess"; # Output may be massive!
+      gem5_run $GEM5_DEBUG_FLAGS $work_begin_tick;
+      echo "Moving CacheBlockAccess trace to $OUT_DIR/"${name_prefix}-CacheBlockAccess.out"";
+      mv $OUT_DIR/trace.out $OUT_DIR/"${name_prefix}-CacheBlockAccess.out"
+
+      echo "Running O3PipeView debug:";
+      GEM5_DEBUG_FLAGS="--debug-flags=O3PipeView";
+      gem5_run $GEM5_DEBUG_FLAGS $pipe_debug_tick;
+      echo "Moving O3PipeView trace to $OUT_DIR/"${name_prefix}-O3PipeView.out"";
+      mv $OUT_DIR/trace.out $OUT_DIR/"${name_prefix}-O3PipeView.out"
+
+      echo "Running Exec debug:";
+      GEM5_DEBUG_FLAGS="--debug-flags=Exec";
+      gem5_run $GEM5_DEBUG_FLAGS $pipe_debug_tick;
+      echo "Moving Exec trace to $OUT_DIR/"${name_prefix}-Exec.out"";
+      mv $OUT_DIR/trace.out $OUT_DIR/"${name_prefix}-Exec.out"
+    ;;
+
+    "find_tick")
+      echo "Running find start work tick run";
+      echo "Remaking Spectre Shell for START_WORK_M5OP=0x0021";
+      cd $TESTS_DIR;
+      make clean;
+      make DFLAGS=-DSTART_WORK_M5OP=0x0021;
+      cd $REPO;
+
+      GEM5_DEBUG_FLAGS="";
+      START_TICK=0;
+      gem5_run "$GEM5_DEBUG_FLAGS" $START_TICK; # Need quotes to pass empty str variable
+
+      echo "m5_exit tick should be on last line of gem5_output.out: "
+      tail -1 $OUT_DIR/gem5_output.out;
+    ;;
+
+    "production")
+      echo "Running production run";
+      GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockAccess";
+      START_TICK=0;
+      gem5_run $GEM5_DEBUG_FLAGS $START_TICK;
+    ;;
+
+    *)
+      echo "Error: No arguments given!";
+      echo """
+        Usage:
+        ./micro.sh debug <work_begin_tick> <name_prefix>
+        ./micro.sh find_tick
+        ./micro.sh production
+
+      """
+    ;;
+    esac
+}
+
+gem5_run () {
+  build/X86/gem5.opt --outdir=$OUT_DIR $1 --debug-file=trace.out \
+  --debug-start=$2 \
+  configs/example/se.py --cmd=$TESTS_DIR/spectre_shell \
+  --options=$TESTS_DIR/$BINARY_ARGS \
+  --cpu-type=X86O3CPU --l1d_size=64kB --l1i_size=16kB --caches --l2cache \
+  --cacheline_size 64 --l2-hwp-type StridePrefetcher \
+  --bp-type LocalBP \
+  --output=bin_output.out &> m5out/gem5_output.out
+  echo "Done running gem5"
+}
+
+main "$@"
 
 ###
 # Test correctness directly on host:

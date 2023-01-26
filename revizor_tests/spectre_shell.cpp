@@ -138,7 +138,7 @@ int main(int argc, char* argv[])
     // r14 <- input base address (stored in rdi, the first argument of measurement_code)
     "mov r14, %[main_region_addr]\n"
 
-    // Other prologue regs are saved by asm clobber list!
+    // stored_rsp <- rsp
     "mov qword ptr [r14 + " xstr(RSP_OFFSET) "], rsp\n"
     "mov qword ptr [r14 + " xstr(RBP_OFFSET) "], rbp\n"
 
@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
     "mov rdi, 0\n" // Arg 1
     "mov rsi, 0\n" // Arg 2
     ".word 0x040F\n"
-    ".word 0x005a\n" // 0x005a: m5_work_begin, from asm/generic/m5ops.h
+    ".word " xstr(START_WORK_M5OP) "\n" // 0x005a: m5_work_begin, from asm/generic/m5ops.h
     "popq rsi\n"
     "popq rdi\n"
     "popq rax\n"
@@ -205,7 +205,7 @@ int main(int argc, char* argv[])
     "AND rax, 0b111111000000\n"
 
     // delay the cond. jump
-    // qword ptr should be a dereference
+    // qword ptr should be a dereference (mov dest, src)
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
@@ -216,12 +216,11 @@ int main(int argc, char* argv[])
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
-
+    
     // reduce the entropy in rbx
     "AND rbx, 0b1000000\n"
 
     "CMP rbx, 0\n"
-
     "JE .l1\n"  // misprediction
     ".l0:\n"
         // # rbx != 0
@@ -256,7 +255,7 @@ int main(int argc, char* argv[])
     ".att_syntax\n" // Else rest of compiled code will break
   : [output] "=rm" (output) // Output e.g. "=r" (dst)
   : [main_region_addr] "r" (sandbox_input) // Input e.g. "r" (src)
-  :  "rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r14", "cc", "memory" // Clobber list
+  :  "rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r10", "r14", "cc", "memory" // Clobber list
   );
   m5_dump_stats(0,0); //M5
   // Effective memory dmb in beginning
