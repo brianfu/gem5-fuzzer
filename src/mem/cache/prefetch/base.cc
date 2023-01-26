@@ -51,6 +51,7 @@
 #include "mem/cache/base.hh"
 #include "params/BasePrefetcher.hh"
 #include "sim/system.hh"
+#include "debug/PrefetchMissOnProbeNotify.hh"
 
 namespace gem5
 {
@@ -264,9 +265,19 @@ Base::probeNotify(const PacketPtr &pkt, bool miss)
     if (observeAccess(pkt, miss)) {
         if (useVirtualAddresses && pkt->req->hasVaddr()) {
             PrefetchInfo pfi(pkt, pkt->req->getVaddr(), miss);
+
+            if(miss) {
+                DPRINTF(PrefetchMissOnProbeNotify, "Prefetch miss on cache line vaddr %ld\n", pkt->req->getVaddr());
+            }
+
             notify(pkt, pfi);
         } else if (!useVirtualAddresses) {
             PrefetchInfo pfi(pkt, pkt->req->getPaddr(), miss);
+
+            if(miss) {
+                DPRINTF(PrefetchMissOnProbeNotify, "Prefetch miss on cache line paddr %ld\n", pkt->req->getPaddr());
+            }
+
             notify(pkt, pfi);
         }
     }

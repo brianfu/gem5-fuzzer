@@ -8,7 +8,6 @@
 #include <vector>
 
 using namespace std;
-#include "defines.h"
 
 // Sandbox
 #define WORKING_MEMORY_SIZE 1048576 // 256KB

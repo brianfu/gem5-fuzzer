@@ -8,87 +8,7 @@
 
 using namespace std;
 #include "defines.h"
-#include "gem5/m5ops.h"
-// #include "m5_mmap.h"
-
-// Sandbox
-#define WORKING_MEMORY_SIZE 1048576 // 256KB
-#define MAIN_REGION_SIZE 4096
-#define FAULTY_REGION_SIZE 4096
-#define OVERFLOW_REGION_SIZE 4096
-#define REG_INITIALIZATION_REGION_SIZE 64
-
-#define L1D_ASSOCIATIVITY 12 // cat /sys/devices/system/cpu/cpu0/cache/index0/ways_of_associativity
-#define EVICT_REGION_SIZE (L1D_ASSOCIATIVITY * 4096)
-#define EVICT_REGION_OFFSET (EVICT_REGION_SIZE + OVERFLOW_REGION_SIZE)
-#define REG_INIT_OFFSET 8192 // (MAIN_REGION_SIZE + FAULTY_REGION_SIZE)
-#define RSP_OFFSET 12288 // (MAIN_REGION_SIZE + FAULTY_REGION_SIZE + OVERFLOW_REGION_SIZE)
-#define RBP_OFFSET 12296 // RSP_OFFSET + sizeof(stored_rsp)
-
-#define xstr(s) _str(s)
-#define _str(s) str(s)
-#define str(s) #s
-
-typedef struct Sandbox
-{
-    char eviction_region[EVICT_REGION_SIZE];   // region used in Prime+Probe for priming
-    char lower_overflow[OVERFLOW_REGION_SIZE]; // zero-initialized region for accidental overflows
-    char main_region[MAIN_REGION_SIZE];        // first input page. does not cause faults
-    char faulty_region[FAULTY_REGION_SIZE];    // second input. causes a (configurable) fault
-    char upper_overflow[OVERFLOW_REGION_SIZE]; // zero-initialized region for accidental overflows
-    uint64_t stored_rsp;
-    uint64_t stored_rbp; // Not supported by asm clobbering
-} sandbox_t;
-
-#define INPUT_SIZE ((MAIN_REGION_SIZE + FAULTY_REGION_SIZE + OVERFLOW_REGION_SIZE) / 8)
-/*
-  Test case input is an array consisting of initial memory and register values to set
-  Input size: ((main_region size + faulty_region size + upper_overflow_region size) / sizeof(uint64_t))
-  Input is a fixed-size array of 64-bit unsigned integers.
-  The array is used to initialize the sandbox memory and the CPU registers.
-  The array layout is:
-
-  +----------------------+
-  |   Register Values    | upper_overflow_region
-  +----------------------+
-  |                      |
-  |                      | faulty_region
-  | Assist Region Values |
-  +----------------------+
-  |                      |
-  |                      | main_region
-  |  Main Region Values  |
-  +----------------------+
-
-  The ordering of registers:  RAX, RBX, RCX, RDX, RSI, RDI, FLAGS
-*/
-
-uint64_t input[INPUT_SIZE]; // A single test case input
-sandbox_t* sandbox;
-void* stack_base;
-
-// Put input csv into input array
-bool get_input(string csv_path){
-  ifstream csv_file(csv_path);
-  int count = 0;
-
-  // Read each line of the CSV file
-  string line;
-  while (getline(csv_file, line)) {
-    // Split the line into fields using a comma as the delimiter
-    stringstream line_stream(line);
-    string field;
-    while (getline(line_stream, field, ',')) {
-      // Convert the field to a hexadecimal number and add it to the array
-      input[count] = stoul(field, nullptr, 16);
-      count++;
-    }
-  }
-  csv_file.close();
-
-  assert(count == INPUT_SIZE);
-  return true;
-}
+#include "input.h"
 
 int check_sandbox_malloc(sandbox_t* sbox){
   // Assumes sbox contains alloc'd memory
@@ -179,12 +99,15 @@ int main(int argc, char* argv[])
   // Disasm after and compare to regular spectre asm (and hello world asm) to check diffs
   // If done right, should run successfully (return 0) on both laptop host AND X86O3CPU w/ l2cache in gem5!
 
-  cout << "Grabbing Input" << endl;
-  if (argc < 2) {
-    cout << "Requires input csv as argument" << endl;
-  }
-  bool success = get_input(argv[1]);
-  cout << "get_input returned: " << success << endl;
+  // cout << "Grabbing Input" << endl;
+  // if (argc < 2) {
+  //   cout << "Requires input csv as argument" << endl;
+  // }
+  // cout << "Input argument found" << endl;
+  // bool success = get_input(argv[1]);
+  // cout << "get_input returned: " << success << endl;
+
+  cout << "Assuming input array in input.h" << endl;
 
   cout << "Allocating sandbox" << endl;
   sandbox = (sandbox_t*) malloc(sizeof(sandbox_t));
@@ -234,7 +157,38 @@ int main(int argc, char* argv[])
     "popq rsp \n"
     "mov rbp, rsp \n"
 
-    // TODO Insert magic gem5 start track inst here
+    // Prime: flush entire sandbox from cache
+    // Sandbox is 1536 bytes large, beginning from main_region_addr
+    // Cache lines are 64 bytes each; 1536/64=24 total lines
+    "mov r8, 0\n"
+    ".flush_loop:\n"
+
+    "mov r9, 64\n"
+    "imul r9, r8\n" // r9 now contains the byte offset from main_region_addr
+    "add r9, %[main_region_addr]\n" // r9 now contains the addr to flush
+    "clflush (r9)\n"
+    
+    "inc r8\n"
+    "cmp r8, 24\n"
+    "jl .flush_loop\n"
+
+    // Insert magic gem5 work begin
+    // 0x040F is the magic x86 undefined instruction boilerplate to which the identifier gets added
+    // m5_work_begin/m5_work_end will trigger separate ROI stats in stats.txt
+    "pushq rax\n" // Save rax, rdi, rsi
+    "pushq rdi\n" 
+    "pushq rsi\n"
+    "mov rax, 0\n" // Return
+    "mov rdi, 0\n" // Arg 1
+    "mov rsi, 0\n" // Arg 2
+    // 0x005a: m5_work_begin, from asm/generic/m5ops.h
+    // 0x0021: m5_exit (for debugging)
+    ".word 0x040F\n" // 0x040F: Magic x86 undefined instruction boilerplate
+    ".word 0x0021\n"
+    "popq rsi\n"
+    "popq rdi\n"
+    "popq rax\n"
+
     // Execute test case, input is set into rax
     ".test_case_enter:\n"
     "LFENCE\n"
@@ -243,6 +197,7 @@ int main(int argc, char* argv[])
     "AND rax, 0b111111000000\n"
 
     // delay the cond. jump
+    // qword ptr should be a dereference
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
     "LEA rbx, qword ptr [rbx + rax + 1]\n"
@@ -269,7 +224,19 @@ int main(int argc, char* argv[])
         "MOV rax, qword ptr [r14 + 64]\n" // Correct path (should be able to do nothing as well)
     ".l2:\n"
     "MFENCE\n"
-    // TODO Insert magic gem5 end track inst here
+
+    // Insert magic gem5 work end
+    "pushq rax\n"
+    "pushq rdi\n"
+    "pushq rsi\n"
+    "mov rax, 0\n"
+    "mov rdi, 0\n"
+    "mov rsi, 0\n"
+    ".word 0x040F\n"
+    ".word 0x005b\n" // 0x005b: m5_work_end, from asm/generic/m5ops.h
+    "popq rsi\n"
+    "popq rdi\n"
+    "popq rax\n"
     
     // Can print out rax if we want some return value
     "mov %[output], rax\n"
@@ -281,7 +248,7 @@ int main(int argc, char* argv[])
     ".att_syntax\n" // Else rest of compiled code will break
   : [output] "=rm" (output) // Output e.g. "=r" (dst)
   : [main_region_addr] "r" (sandbox_input) // Input e.g. "r" (src)
-  :  "rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r14", "cc", "memory" // Clobber list
+  :  "rax", "rbx", "rcx", "rdx", "rsi", "rdi", "r8", "r9", "r14", "cc", "memory" // Clobber list
   );
   m5_dump_stats(0,0); //M5
   // Effective memory dmb in beginning
