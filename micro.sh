@@ -31,14 +31,14 @@ cd $REPO;
 echo "Running gem5"
 
 # export GEM5_DEBUG_FLAGS="";
-export GEM5_DEBUG_FLAGS="--debug-flags=Exec";
-# export GEM5_DEBUG_FLAGS="--debug-flags=O3PipeView,CacheBlockAccess";
-# export GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockAccess"; # Output may be massive!
+# export GEM5_DEBUG_FLAGS="--debug-flags=Exec";
+# export GEM5_DEBUG_FLAGS="--debug-flags=O3PipeView";
+export GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockAccess"; # Output may be massive!
 
 export BINARY_ARGS="input.csv" # Path to csv containing 1536 uint64_t's in hex form
 
 build/X86/gem5.opt --outdir=$OUT_DIR $GEM5_DEBUG_FLAGS --debug-file=trace.out \
---debug-start=1308024500 \
+--debug-start=0 \
 configs/example/se.py --cmd=$TESTS_DIR/spectre_shell \
 --options=$TESTS_DIR/$BINARY_ARGS \
 --cpu-type=X86O3CPU --l1d_size=64kB --l1i_size=16kB --caches --l2cache \

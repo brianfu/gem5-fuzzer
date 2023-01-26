@@ -93,6 +93,12 @@ void init_sandbox(sandbox_t* sandbox){
   // Give &sandbox->main_region[0] to rdi for input args
 }
 
+inline __attribute__((always_inline))
+void clflush(int* addr)
+{
+    asm volatile ("clflush (%0)"::"r"(addr));
+}
+
 int main(int argc, char* argv[])
 {
   // Use extended asm (asm volatile) to create shell for spectre asm code 
@@ -161,30 +167,32 @@ int main(int argc, char* argv[])
     // Sandbox is 1536 bytes large, beginning from main_region_addr
     // Cache lines are 64 bytes each; 1536/64=24 total lines
     "mov r8, 0\n"
-    ".flush_loop:\n"
+    "flush_loop:\n"
 
     "mov r9, 64\n"
     "imul r9, r8\n" // r9 now contains the byte offset from main_region_addr
     "add r9, %[main_region_addr]\n" // r9 now contains the addr to flush
-    "clflush (r9)\n"
+
+    ".att_syntax\n"
+    "clflush (%%r9)\n" // Absolute hack; No way to do this using intel syntax!
+    ".intel_syntax noprefix\n"
     
     "inc r8\n"
     "cmp r8, 24\n"
-    "jl .flush_loop\n"
+    "jl flush_loop\n"
 
     // Insert magic gem5 work begin
     // 0x040F is the magic x86 undefined instruction boilerplate to which the identifier gets added
     // m5_work_begin/m5_work_end will trigger separate ROI stats in stats.txt
+    // 0x0021: m5_exit (for debugging)
     "pushq rax\n" // Save rax, rdi, rsi
     "pushq rdi\n" 
     "pushq rsi\n"
     "mov rax, 0\n" // Return
     "mov rdi, 0\n" // Arg 1
     "mov rsi, 0\n" // Arg 2
-    // 0x005a: m5_work_begin, from asm/generic/m5ops.h
-    // 0x0021: m5_exit (for debugging)
-    ".word 0x040F\n" // 0x040F: Magic x86 undefined instruction boilerplate
-    ".word 0x0021\n"
+    ".word 0x040F\n"
+    ".word 0x005a\n" // 0x005a: m5_work_begin, from asm/generic/m5ops.h
     "popq rsi\n"
     "popq rdi\n"
     "popq rax\n"
