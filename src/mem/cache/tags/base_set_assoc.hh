@@ -51,7 +51,7 @@
 #include <string>
 #include <vector>
 
-#include "debug/CacheBlockAccess.hh"
+#include "debug/CacheBlockMiss.hh"
 
 #include "base/logging.hh"
 #include "base/types.hh"
@@ -150,7 +150,8 @@ class BaseSetAssoc : public BaseTags
             // Update replacement data of accessed block
             replacementPolicy->touch(blk->replacementData, pkt);
         } else { // Cache miss
-            DPRINTF(CacheBlockAccess, "Cache miss on block %ld\n", pkt->getAddr());
+            DPRINTF(CacheBlockMiss, "Cache miss on block at address %#x\n", pkt->getAddr());
+            // interpret in hex
         }
 
         // The tag lookup latency is the same for a hit or a miss
@@ -158,8 +159,8 @@ class BaseSetAssoc : public BaseTags
 
         //print the address in pkt->getAddr() (physical address of the packet that we are accessing (even for stores))
         //print out whether hit or miss (*blk is NULL or not null)
-        // DPRINTF(CacheBlockAccess, "Accessing address %ld", pkt->getAddr());
-        // DPRINTF(CacheBlockAccess, "Block %s with latency %ld", blk ? "hit " + blk->print() : "miss", lat);
+        // DPRINTF(CacheBlockMiss, "Accessing address %ld", pkt->getAddr());
+        // DPRINTF(CacheBlockMiss, "Block %s with latency %ld", blk ? "hit " + blk->print() : "miss", lat);
 
         return blk;
     }

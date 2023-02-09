@@ -51,6 +51,7 @@
 
 //Add new debug flag here (so we dont need to use cache flag for dprintf)
 #include "debug/CacheAccess.hh"
+#include "debug/CacheMSHRMiss.hh"
 
 #include "debug/CacheComp.hh"
 #include "debug/CachePort.hh"
@@ -339,6 +340,7 @@ BaseCache::handleTimingReqMiss(PacketPtr pkt, MSHR *mshr, CacheBlk *blk,
             } else {
                 DPRINTF(Cache, "%s coalescing MSHR for %s\n", __func__,
                         pkt->print());
+                DPRINTF(CacheMSHRMiss, "MSHR Hit: Coalescing cache miss at address %#x\n", pkt->getAddr());
 
                 assert(pkt->req->requestorId() < system->maxRequestors());
                 stats.cmdStats(pkt).mshrHits[pkt->req->requestorId()]++;
@@ -394,6 +396,10 @@ BaseCache::handleTimingReqMiss(PacketPtr pkt, MSHR *mshr, CacheBlk *blk,
                     !blk->isSet(CacheBlk::WritableBit)) ||
                     pkt->req->isCacheMaintenance());
                 blk->clearCoherenceBits(CacheBlk::ReadableBit);
+
+                DPRINTF(CacheMSHRMiss, "MSHR Miss - current active block: Cache miss at address %#x\n", pkt->getAddr());
+            } else {
+                DPRINTF(CacheMSHRMiss, "MSHR Miss: Cache miss at address %#x\n", pkt->getAddr());
             }
             // Here we are using forward_time, modelling the latency of
             // a miss (outbound) just as forwardLatency, neglecting the

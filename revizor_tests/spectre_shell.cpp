@@ -197,12 +197,20 @@ int main(int argc, char* argv[])
     "popq rdi\n"
     "popq rax\n"
 
+    // TODO put serializing inst here e.g. cpuid
+    //   stop fetching insts until fin'd
+    // hack: loop mem access (more accesses possible than rob size) and then mfence
+    // Main idea: Block the ROB until start of test case! 
+    // Then: 200 ish adds (more than rob entires works too) to flush out ROB
+
     // Execute test case, input is set into rax
     ".test_case_enter:\n"
     "LFENCE\n"
 
+    // reduce the entropy in rbx
+    "AND rbx, 0b0\n" // Will remove detection of other side channels except speculative ones
     // reduce the entropy of rax
-    "AND rax, 0b111111000000\n"
+    "AND rax, 0b111110000000\n"
 
     // delay the cond. jump
     // qword ptr should be a dereference (mov dest, src)
@@ -225,7 +233,7 @@ int main(int argc, char* argv[])
     ".l0:\n"
         // # rbx != 0
         "MOV rax, qword ptr [r14 + rax]\n" // Mispredicted path
-    "JMP .l2\n"
+        "JMP .l2\n"
     ".l1:\n"
         // # rbx == 0
         "MOV rax, qword ptr [r14 + 64]\n" // Correct path (should be able to do nothing as well)
