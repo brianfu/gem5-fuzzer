@@ -10,7 +10,7 @@ export BINARY_ARGS="input.csv" # Path to csv containing 1536 uint64_t's in hex f
 
 cd $REPO;
 
-# Avaliable debug flags: O3CPUAll, O3PipeView, CacheAccess, CacheBlockAccess, PrefetchMissProbeNotify
+# Avaliable debug flags: O3CPUAll, O3PipeView, CacheAccess, CacheBlockMiss, CacheMSHRMiss, PrefetchMissProbeNotify
 # No space between debug flags
 
 debug_run () {
@@ -26,6 +26,7 @@ debug_run () {
 }
 
 gem5_run () {
+  cd $REPO;
   local GEM5_DEBUG_FLAGS=$1;
   # echo "gem5: ${GEM5_DEBUG_FLAGS}";
 
@@ -54,6 +55,15 @@ find_tick () {
 
   echo "m5_exit tick should be on last line of gem5_output.out: "
   tail -1 $OUT_DIR/gem5_output.out;
+}
+
+disassemble () {
+  name_prefix=$1;
+  echo "Disassembling Spectre Shell";
+  cd $TESTS_DIR;
+  objdump -d spectre_shell > "${name_prefix}-disasm.asm";
+  mv ./"${name_prefix}-disasm.asm" $OUT_DIR/"${name_prefix}-disasm.asm";
+  echo "Spectre shell disassembled at $OUT_DIR/${name_prefix}-disasm.asm";
 }
 
 main() {
@@ -86,8 +96,10 @@ main() {
       name_prefix=$3; # E.g. "1" for "1-misses.out"
 
       let "pipe_debug_tick = $work_begin_tick - 10000000"; # Go back 10000 cycles beforehand for debug(assuming 1 GHz)
-      echo "Given m5_work_begin tick is: $work_begin_tick"
-      echo "Pipeline debug tick set at: $pipe_debug_tick"
+      echo "Given m5_work_begin tick is: $work_begin_tick";
+      echo "Pipeline debug tick set at: $pipe_debug_tick";
+
+      disassemble ${name_prefix}
 
       CURR_DEBUG_FLAGS=CacheBlockMiss;
       CURR_TRACE_NAME="${name_prefix}-${CURR_DEBUG_FLAGS}";
@@ -120,8 +132,9 @@ main() {
 
     "production")
       echo "Running production run";
-      GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockAccess";
-      START_TICK=0;
+      GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockMiss";
+      # START_TICK=0;
+      START_TICK=1333533000; # 10k cycles before test_case_enter of slowest tested run
       gem5_run $GEM5_DEBUG_FLAGS $START_TICK;
     ;;
 
@@ -138,12 +151,7 @@ main() {
     ;;
 
     "disasm")
-      name_prefix=$2;
-      echo "Disassembling Spectre Shell";
-      cd $TESTS_DIR;
-      objdump -d spectre_shell > "${name_prefix}-disasm.asm";
-      mv ./"${name_prefix}-disasm.asm" $OUT_DIR/"${name_prefix}-disasm.asm";
-      echo "Spectre shell disassembled at $OUT_DIR/${name_prefix}-disasm.asm";
+      disassemble $2
     ;;
 
     *)

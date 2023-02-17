@@ -34,9 +34,6 @@ int check_sandbox_malloc(sandbox_t* sbox){
 
 void init_sandbox(sandbox_t* sandbox){
   cout << "Entered init_sandbox" << endl;
-  // for (int i=0; i<INPUT_SIZE; i++) {
-  //   input[i] = 0xdeadbeef + i*0x1ee7c0de; // Very crude random input generator
-  // }
   uint64_t* current_input = (uint64_t*) &input;
   cout << "Set inputs" << endl;
 
@@ -101,22 +98,11 @@ void clflush(int* addr)
 
 int main(int argc, char* argv[])
 {
-  // Use extended asm (asm volatile) to create shell for spectre asm code 
-  // Disasm after and compare to regular spectre asm (and hello world asm) to check diffs
-  // If done right, should run successfully (return 0) on both laptop host AND X86O3CPU w/ l2cache in gem5!
-
-  // cout << "Grabbing Input" << endl;
-  // if (argc < 2) {
-  //   cout << "Requires input csv as argument" << endl;
-  // }
-  // cout << "Input argument found" << endl;
-  // bool success = get_input(argv[1]);
-  // cout << "get_input returned: " << success << endl;
-
+  // Use extended asm (asm volatile) to create shell for spectre asm code
   cout << "Assuming input array in input.h" << endl;
 
   cout << "Allocating sandbox" << endl;
-  sandbox = (sandbox_t*) malloc(sizeof(sandbox_t));
+  sandbox = (sandbox_t*) aligned_alloc(4096, sizeof(sandbox_t));
   int res = check_sandbox_malloc(sandbox);
   cout << "check_sandbox_malloc returned: " << res << endl;
 
@@ -197,12 +183,7 @@ int main(int argc, char* argv[])
     "popq rdi\n"
     "popq rax\n"
 
-    // TODO put serializing inst here e.g. cpuid
-    //   stop fetching insts until fin'd
-    // hack: loop mem access (more accesses possible than rob size) and then mfence
-    // Main idea: Block the ROB until start of test case! 
-    // Then: 200 ish adds (more than rob entires works too) to flush out ROB
-
+    ".balign 4096\n" // byte-align by 4KB for Unicorn
     // Execute test case, input is set into rax
     ".test_case_enter:\n"
     "LFENCE\n"
@@ -239,6 +220,8 @@ int main(int argc, char* argv[])
         "MOV rax, qword ptr [r14 + 64]\n" // Correct path (should be able to do nothing as well)
     ".l2:\n"
     "MFENCE\n"
+    
+    // test case end
 
     // Insert magic gem5 work end
     "pushq rax\n"
