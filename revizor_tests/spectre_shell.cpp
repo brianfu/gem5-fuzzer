@@ -103,6 +103,7 @@ int main(int argc, char* argv[])
 
   cout << "Allocating sandbox" << endl;
   sandbox = (sandbox_t*) aligned_alloc(4096, sizeof(sandbox_t));
+  // sandbox = (sandbox_t*) malloc(sizeof(sandbox_t));
   int res = check_sandbox_malloc(sandbox);
   cout << "check_sandbox_malloc returned: " << res << endl;
 
@@ -166,6 +167,8 @@ int main(int argc, char* argv[])
     "inc r8\n"
     "cmp r8, 24\n"
     "jl flush_loop\n"
+
+    // TODO ADD 256 (<ROB size) no ops!
 
     // Insert magic gem5 work begin
     // 0x040F is the magic x86 undefined instruction boilerplate to which the identifier gets added

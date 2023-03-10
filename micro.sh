@@ -105,6 +105,14 @@ main() {
       CURR_TRACE_NAME="${name_prefix}-${CURR_DEBUG_FLAGS}";
       debug_run $CURR_DEBUG_FLAGS $work_begin_tick $CURR_TRACE_NAME;
 
+      CURR_DEBUG_FLAGS=CacheBlockHit;
+      CURR_TRACE_NAME="${name_prefix}-${CURR_DEBUG_FLAGS}";
+      debug_run $CURR_DEBUG_FLAGS $pipe_debug_tick $CURR_TRACE_NAME;
+
+      CURR_DEBUG_FLAGS=CacheBlockMiss,CacheBlockHit;
+      CURR_TRACE_NAME="${name_prefix}-${CURR_DEBUG_FLAGS}";
+      debug_run $CURR_DEBUG_FLAGS $pipe_debug_tick $CURR_TRACE_NAME;
+
       CURR_DEBUG_FLAGS=O3PipeView;
       CURR_TRACE_NAME="${name_prefix}-${CURR_DEBUG_FLAGS}";
       debug_run $CURR_DEBUG_FLAGS $pipe_debug_tick $CURR_TRACE_NAME;
@@ -120,10 +128,6 @@ main() {
       CURR_DEBUG_FLAGS=LSQUnit;
       CURR_TRACE_NAME="${name_prefix}-${CURR_DEBUG_FLAGS}";
       debug_run $CURR_DEBUG_FLAGS $pipe_debug_tick $CURR_TRACE_NAME;
-
-      CURR_DEBUG_FLAGS=CacheMSHRMiss;
-      CURR_TRACE_NAME="${name_prefix}-${CURR_DEBUG_FLAGS}";
-      debug_run $CURR_DEBUG_FLAGS $pipe_debug_tick $CURR_TRACE_NAME;
     ;;
 
     "find_tick")
@@ -134,7 +138,7 @@ main() {
       echo "Running production run";
       GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockMiss";
       # START_TICK=0;
-      START_TICK=1333533000; # 10k cycles before test_case_enter of slowest tested run
+      START_TICK=1333623000; # 10k cycles before test_case_enter of slowest tested run
       gem5_run $GEM5_DEBUG_FLAGS $START_TICK;
     ;;
 
@@ -146,8 +150,7 @@ main() {
       mv $second_input_filename input.h;
       mv temporary_input_123_0xdeadbeef $second_input_filename;
       echo "Successfully swapped inputs";
-
-      find_tick;
+      # find_tick;
     ;;
 
     "disasm")
@@ -171,13 +174,3 @@ main() {
 }
 
 main "$@"
-
-###
-# build/X86/gem5.opt --help
-# build/X86/gem5.opt --debug-help
-# build/X86/gem5.opt configs/example/se.py --help
-# 
-# Test correctness directly on host:
-# make clean
-# g++ -o spectre_shell_laptop spectre_shell_laptop.cpp -g -I. 
-# ./spectre_shell_laptop

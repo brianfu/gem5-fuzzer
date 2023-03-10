@@ -893,8 +893,8 @@ LSQUnit::writebackStores()
             assert(!inst->isStoreConditional());
             assert(!inst->inHtmTransactionalState());
             gem5::ThreadContext *thread = cpu->tcBase(lsqID);
-            PacketPtr main_pkt = new Packet(request->mainReq(),
-                                            MemCmd::WriteReq);
+            PacketPtr main_pkt = new Packet(request->mainReq(), MemCmd::WriteReq, 
+                                            false, false, inst->pcState().instAddr());
             main_pkt->dataStatic(inst->memData);
             request->mainReq()->localAccessor(thread, main_pkt);
             delete main_pkt;
@@ -1371,7 +1371,8 @@ LSQUnit::read(LSQRequest *request, ssize_t load_idx)
         load_inst->memData = new uint8_t[MaxDataBytes];
 
         gem5::ThreadContext *thread = cpu->tcBase(lsqID);
-        PacketPtr main_pkt = new Packet(request->mainReq(), MemCmd::ReadReq);
+        PacketPtr main_pkt = new Packet(request->mainReq(), MemCmd::ReadReq, 
+                                        false, false, load_inst->pcState().instAddr());
 
         main_pkt->dataStatic(load_inst->memData);
 
@@ -1470,8 +1471,8 @@ LSQUnit::read(LSQRequest *request, ssize_t load_idx)
                         "addr %#x\n", store_it._idx,
                         request->mainReq()->getVaddr());
 
-                PacketPtr data_pkt = new Packet(request->mainReq(),
-                        MemCmd::ReadReq);
+                PacketPtr data_pkt = new Packet(request->mainReq(), MemCmd::ReadReq, 
+                                                false, false, load_inst->pcState().instAddr());
                 data_pkt->dataStatic(load_inst->memData);
 
                 // hardware transactional memory

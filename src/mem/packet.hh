@@ -879,8 +879,45 @@ class Packet : public Printable
            htmReturnReason(HtmCacheFailure::NO_FAIL),
            htmTransactionUid(0),
            headerDelay(0), snoopDelay(0),
-           payloadDelay(0), senderState(NULL)
-    {
+           payloadDelay(0), senderState(NULL), program_counter(0)
+    {   
+        flags.clear();
+        if (req->hasPaddr()) {
+            addr = req->getPaddr();
+            flags.set(VALID_ADDR);
+            _isSecure = req->isSecure();
+        }
+
+        /**
+         * hardware transactional memory
+         *
+         * This is a bit of a hack!
+         * Technically the address of a HTM command is set to zero
+         * but is not valid. The reason that we pretend it's valid is
+         * to void the getAddr() function from failing. It would be
+         * cumbersome to add control flow in many places to check if the
+         * packet represents a HTM command before calling getAddr().
+         */
+        if (req->isHTMCmd()) {
+            flags.set(VALID_ADDR);
+            assert(addr == 0x0);
+        }
+        if (req->hasSize()) {
+            size = req->getSize();
+            flags.set(VALID_SIZE);
+        }
+    }
+    
+    // For passing along PC
+    Packet(const RequestPtr &_req, MemCmd _cmd, bool test1, bool test2, uint64_t _program_counter)
+        :  cmd(_cmd), id((PacketId)_req.get()), req(_req),
+           data(nullptr), addr(0), _isSecure(false), size(0),
+           _qosValue(0),
+           htmReturnReason(HtmCacheFailure::NO_FAIL),
+           htmTransactionUid(0),
+           headerDelay(0), snoopDelay(0),
+           payloadDelay(0), senderState(NULL), program_counter(_program_counter)
+    {   
         flags.clear();
         if (req->hasPaddr()) {
             addr = req->getPaddr();
@@ -920,7 +957,7 @@ class Packet : public Printable
            htmReturnReason(HtmCacheFailure::NO_FAIL),
            htmTransactionUid(0),
            headerDelay(0),
-           snoopDelay(0), payloadDelay(0), senderState(NULL)
+           snoopDelay(0), payloadDelay(0), senderState(NULL), program_counter(0)
     {
         flags.clear();
         if (req->hasPaddr()) {
@@ -950,7 +987,7 @@ class Packet : public Printable
            headerDelay(pkt->headerDelay),
            snoopDelay(0),
            payloadDelay(pkt->payloadDelay),
-           senderState(pkt->senderState)
+           senderState(pkt->senderState), program_counter(pkt->program_counter)
     {
         if (!clear_flags)
             flags.set(pkt->flags & COPY_FLAGS);
@@ -1523,6 +1560,9 @@ class Packet : public Printable
      * failed transaction, this function returns the failure reason.
      */
     HtmCacheFailure getHtmTransactionFailedInCacheRC() const;
+
+    // Get this from LSQ (LSQRequest) via inst->pcState() s.t. it can be grabbed out in accessBlock
+    uint64_t program_counter;
 };
 
 } // namespace gem5
