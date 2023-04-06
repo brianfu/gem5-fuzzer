@@ -136,7 +136,7 @@ main() {
 
     "production")
       echo "Running production run";
-      GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockMiss";
+      GEM5_DEBUG_FLAGS="--debug-flags=CacheBlockMiss,CacheBlockHit";
       # START_TICK=0;
       START_TICK=1333623000; # 10k cycles before test_case_enter of slowest tested run
       gem5_run $GEM5_DEBUG_FLAGS $START_TICK;

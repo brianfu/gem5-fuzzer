@@ -128,7 +128,8 @@ class BaseSetAssoc : public BaseTags
      * @return Pointer to the cache block if found.
      */
     CacheBlk* accessBlock(const PacketPtr pkt, Cycles &lat) override
-    {    
+    {   
+        // DPRINTF(CacheBlockHit, "Packet contents for Paddr %#x: %s\n", pkt->getAddr(), pkt->print());
         CacheBlk *blk = findBlock(pkt->getAddr(), pkt->isSecure());
 
         // Access all tags in parallel, hence one in each way.  The data side
